@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.scans/
+.scans*
+scans/Processed/
+scans/results.json
+.env
