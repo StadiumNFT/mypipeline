@@ -1,0 +1,15 @@
+{
+  "name": "ageless-pipeline-ui",
+  "version": "0.1.0",
+  "description": "One\u2011click desktop UI for Ageless Pipeline (pair \u2192 queue \u2192 post).",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "postinstall": "echo Done"
+  },
+  "author": "Ageless",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^31.0.0"
+  }
+}

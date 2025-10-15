@@ -5,3 +5,58 @@ __pycache__/
 scans/Processed/
 scans/results.json
 .env
+# ---- General ----
+*.log
+*.tmp
+*.bak
+*.swp
+.DS_Store
+Thumbs.db
+
+# ---- Python build + cache ----
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+build/
+dist/
+
+# ---- Node / Electron ----
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# ---- Electron runtime cache ----
+/AgelessPipelineUI/Cache/
+/AgelessPipelineUI/UserData/
+
+# ---- Scans + outputs ----
+/Scans_Inbox/*
+!/Scans_Inbox/.gitkeep
+/Scans_Ready/*
+!/Scans_Ready/.gitkeep
+/Scans_Error/*
+!/Scans_Error/.gitkeep
+
+# ---- Generated pipeline results ----
+/pipeline/output/json/*
+/pipeline/output/txt/*
+/pipeline/output/csv/*
+/pipeline/output/batches/*
+!/pipeline/output/json/.gitkeep
+!/pipeline/output/txt/.gitkeep
+!/pipeline/output/csv/.gitkeep
+!/pipeline/output/batches/.gitkeep
+
+# ---- Logs ----
+/pipeline/logs/*
+!/pipeline/logs/.gitkeep
+
+# ---- Virtual environments ----
+env/
+venv/
+.venv/
+ENV/
