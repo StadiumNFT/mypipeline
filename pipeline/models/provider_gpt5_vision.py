@@ -3,12 +3,31 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 import os
+import random
+import time
 from typing import Any, Dict, List
 
 from openai import OpenAI
 
+try:  # pragma: no cover - optional exception imports
+    from openai import APIStatusError, RateLimitError
+except ImportError:  # pragma: no cover - fallback for older SDKs
+    APIStatusError = RateLimitError = Exception  # type: ignore
+
+try:  # pragma: no cover - optional exception imports
+    from openai import APITimeoutError
+except ImportError:  # pragma: no cover - fallback for older SDKs
+    APITimeoutError = Exception  # type: ignore
+
 DEFAULT_MODEL_NAME = "gpt-5.1-vision"
+DEFAULT_TIMEOUT = 45
+MAX_ATTEMPTS = 4
+RETRYABLE_STATUS = {408, 409, 429, 500, 502, 503, 504}
+TELEMETRY_SAMPLE_RATE = int(os.getenv("PIPELINE_TELEMETRY_SAMPLE", "20") or 20)
+
+LOGGER = logging.getLogger(__name__)
 
 
 class MissingAPIKey(RuntimeError):
@@ -83,6 +102,7 @@ def analyze_card(front_path: str, back_path: str, hints: Dict[str, Any]) -> Dict
     client = OpenAI(api_key=api_key)
     model_name = hints.get("model_name") or os.getenv("MODEL_NAME") or DEFAULT_MODEL_NAME
     max_tokens = int(hints.get("token_limit") or os.getenv("TOKEN_LIMIT") or 900)
+    timeout = int(hints.get("timeout") or os.getenv("PIPELINE_REQUEST_TIMEOUT", DEFAULT_TIMEOUT))
 
     capsule = hints.get("capsule") or {}
     capsule_text = json.dumps(capsule, ensure_ascii=False, separators=(",", ":"))
@@ -108,26 +128,64 @@ def analyze_card(front_path: str, back_path: str, hints: Dict[str, Any]) -> Dict
     user_content.append(_encode_image(front_path))
     user_content.append(_encode_image(back_path))
 
-    response = client.responses.create(
-        model=model_name,
-        input=[
-            {
-                "role": "system",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": rules_text,
-                    }
-                ],
-            },
-            {
-                "role": "user",
-                "content": user_content,
-            },
-        ],
-        temperature=0.1,
-        max_output_tokens=max_tokens,
-    )
+    if TELEMETRY_SAMPLE_RATE > 0 and random.randint(1, TELEMETRY_SAMPLE_RATE) == 1:
+        LOGGER.info(
+            "gpt5_request sku=%s exemplars=%d hints_chars=%d",
+            sku,
+            len(exemplars),
+            len(capsule_text),
+        )
+
+    def _send_request() -> Dict[str, Any]:
+        response = client.responses.create(
+            model=model_name,
+            input=[
+                {
+                    "role": "system",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": rules_text,
+                        }
+                    ],
+                },
+                {
+                    "role": "user",
+                    "content": user_content,
+                },
+            ],
+            temperature=0.1,
+            max_output_tokens=max_tokens,
+            timeout=timeout,
+        )
+        return response
+
+    delay = 1.0
+    attempts = 0
+    last_exc: Exception | None = None
+    response = None
+    while attempts < MAX_ATTEMPTS:
+        attempts += 1
+        try:
+            response = _send_request()
+            break
+        except (RateLimitError, APITimeoutError) as exc:
+            last_exc = exc
+        except APIStatusError as exc:  # pragma: no cover - network branch
+            last_exc = exc
+            status = getattr(exc, "status_code", None) or getattr(exc, "status", None)
+            if status not in RETRYABLE_STATUS:
+                raise
+        except Exception:
+            raise
+        if attempts >= MAX_ATTEMPTS:
+            assert last_exc is not None
+            raise last_exc
+        time.sleep(delay)
+        delay = min(delay * 2, 8.0)
+
+    if response is None:  # pragma: no cover - safety net
+        raise RuntimeError("Failed to receive response from GPT-5 Vision")
 
     # Collect the first text block returned.
     text_chunks: List[str] = []
