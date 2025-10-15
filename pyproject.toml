@@ -1,0 +1,20 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mypipeline"
+version = "0.1.0"
+description = "Ageless Collectibles card scanning pipeline"
+authors = [{name = "Ageless Collectibles"}]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "openai>=1.40.0",
+    "Pillow>=10.0.0",
+    "pydantic>=2.6",
+    "typer>=0.12",
+]
+
+[project.scripts]
+card-pipeline = "mypipeline.main:app"
