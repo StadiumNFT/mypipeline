@@ -9,6 +9,12 @@ How to run (local):
 4) Post-process a batch (uses mock model until API wired):
    python -m pipeline.run post --job-id <printed_id>
 
+### Windows one-click UI
+
+Prefer a guided experience? Use the batch files in `scripts/windows` to run each
+stage via a double-click. See [Windows One-Click Pipeline UI](docs/windows_ui_pipeline.md)
+for details.
+
 Outputs:
 - pipeline/output/json/<SKU>.json
 - pipeline/output/txt/<SKU>.txt
