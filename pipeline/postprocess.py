@@ -150,9 +150,19 @@ def _normalise(raw: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _run_with_timeout(func, timeout: int, *args, **kwargs):
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(func, *args, **kwargs)
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(func, *args, **kwargs)
+    shutdown_early = False
+    try:
         return future.result(timeout=timeout)
+    except concurrent.futures.TimeoutError:
+        future.cancel()
+        executor.shutdown(wait=False, cancel_futures=True)
+        shutdown_early = True
+        raise
+    finally:
+        if not shutdown_early:
+            executor.shutdown(wait=True, cancel_futures=True)
 
 
 def _write_outputs(out_root: Path, sku: str, record: Dict[str, Any], needs_review: bool) -> None:
