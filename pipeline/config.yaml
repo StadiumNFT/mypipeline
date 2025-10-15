@@ -1,0 +1,11 @@
+# Ageless Pipeline configuration
+inbox_dir: Scans_Inbox
+ready_dir: Scans_Ready
+error_dir: Scans_Error
+output_dir: pipeline/output
+filename_regex: '^(Box\d+)-([A-Z]{2})_(\d{4})_([FB])\.(jpg|jpeg|png|tif|tiff)$'
+batch_size: 20
+concurrency: 4
+retry_max: 2
+model: gpt-5
+pricing_mode: median
