@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from typing import Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic_core import PydanticUndefined
 
 VALID_CATEGORIES = {"sports", "marvel", "pokemon", "other"}
 VALID_COND = {"NM", "EX", "VG", "raw-estimate"}
@@ -29,10 +30,10 @@ class CardRecord(BaseModel):
     price_est: Optional[float] = None
     conf: float
 
-    class Config:
-        extra = "ignore"
+    model_config = ConfigDict(extra="ignore")
 
-    @validator("cat")
+    @field_validator("cat")
+    @classmethod
     def validate_cat(cls, value: str) -> str:
         if value:
             value = value.lower()
@@ -40,7 +41,8 @@ class CardRecord(BaseModel):
             return "other"
         return value
 
-    @validator("cond")
+    @field_validator("cond")
+    @classmethod
     def validate_cond(cls, value: Optional[str]) -> Optional[str]:
         if value is None:
             return value
@@ -51,7 +53,8 @@ class CardRecord(BaseModel):
             return None
         return value
 
-    @validator("year", pre=True)
+    @field_validator("year", mode="before")
+    @classmethod
     def coerce_year(cls, value):
         if value in (None, ""):
             return None
@@ -60,19 +63,22 @@ class CardRecord(BaseModel):
         except (TypeError, ValueError):
             return None
 
-    @validator("grade", pre=True, always=True)
+    @field_validator("grade", mode="before")
+    @classmethod
     def default_grade(cls, value):
-        if not value:
+        if value in (None, "") or value is PydanticUndefined:
             return "raw"
         return value
 
-    @validator("player", "character", pre=True)
+    @field_validator("player", "character", mode="before")
+    @classmethod
     def strip_text(cls, value):
         if isinstance(value, str):
             return value.strip()
         return value
 
-    @validator("num", pre=True)
+    @field_validator("num", mode="before")
+    @classmethod
     def str_number(cls, value):
         if value is None:
             return None

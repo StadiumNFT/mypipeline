@@ -72,7 +72,7 @@ function writeEnv(root, updates) {
       out.push(line);
       continue;
     }
-    const [rawKey] = line.split('=', 1);
+    const [rawKey] = line.split('=');
     const key = rawKey.trim();
     if (Object.prototype.hasOwnProperty.call(updates, key)) {
       out.push(`${key}=${updates[key] ?? ''}`);
