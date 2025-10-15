@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Card",
+  "type": "object",
+  "required": [
+    "sku",
+    "category",
+    "brand",
+    "set_name",
+    "year",
+    "number",
+    "confidence",
+    "images"
+  ],
+  "properties": {
+    "sku": {
+      "type": "string"
+    },
+    "box_code": {
+      "type": "string"
+    },
+    "seq": {
+      "type": "integer"
+    },
+    "category": {
+      "type": "string"
+    },
+    "brand": {
+      "type": "string"
+    },
+    "set_name": {
+      "type": "string"
+    },
+    "year": {
+      "type": [
+        "string",
+        "integer"
+      ]
+    },
+    "number": {
+      "type": "string"
+    },
+    "player_or_character": {
+      "type": "string"
+    },
+    "team": {
+      "type": "string"
+    },
+    "parallel_or_insert": {
+      "type": "string"
+    },
+    "grading_state": {
+      "type": "string"
+    },
+    "condition_notes": {
+      "type": "string"
+    },
+    "confidence": {
+      "type": "number"
+    },
+    "price_min": {
+      "type": "number"
+    },
+    "price_max": {
+      "type": "number"
+    },
+    "csv_template": {
+      "type": "string"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "created_at": {
+      "type": "string"
+    }
+  }
+}
