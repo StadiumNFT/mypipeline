@@ -66,10 +66,14 @@ class RuleBasedClassifier:
                 if value not in expected:
                     return False
             if "greater_than" in check:
-                if RuleBasedClassifier._compare(value, check["greater_than"], operator.le):
+                if not RuleBasedClassifier._compare_numeric(
+                    value, check["greater_than"], operator.gt
+                ):
                     return False
             if "less_than" in check:
-                if RuleBasedClassifier._compare(value, check["less_than"], operator.ge):
+                if not RuleBasedClassifier._compare_numeric(
+                    value, check["less_than"], operator.lt
+                ):
                     return False
         return True
 
@@ -84,8 +88,10 @@ class RuleBasedClassifier:
         return value
 
     @staticmethod
-    def _compare(value, other, comparator):
+    def _compare_numeric(value, other, comparator):
         try:
-            return comparator(float(value), float(other))
+            left = float(value)
+            right = float(other)
         except (TypeError, ValueError):
             return False
+        return comparator(left, right)
