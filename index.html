@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Ageless Pipeline UI</title>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+  <header>
+    <h1>Ageless Pipeline Control</h1>
+    <button id="chooseRoot">Choose Project Root</button>
+    <input id="rootPath" placeholder="Select the repo folder (contains pipeline/, Scans_Inbox/, etc.)"/>
+  </header>
+  <main>
+    <section class="card">
+      <h2>1) Watcher / Pair</h2>
+      <p>Pairs *_F and *_B in Scans_Inbox into Scans_Ready/SKU/.</p>
+      <button id="runPair">Run Pair</button>
+    </section>
+    <section class="card">
+      <h2>2) Queue</h2>
+      <p>Creates a batch job from Scans_Ready. Copies the printed Job ID below.</p>
+      <button id="runQueue">Run Queue</button>
+    </section>
+    <section class="card">
+      <h2>3) Post</h2>
+      <p>Processes a Job ID and writes JSON/TXT/CSV outputs.</p>
+      <input id="jobId" placeholder="batch_..."/>
+      <button id="runPost">Run Post</button>
+    </section>
+  </main>
+  <section class="log">
+    <h3>Live Output</h3>
+    <textarea id="output" spellcheck="false"></textarea>
+  </section>
+  <script src="renderer.js"></script>
+</body>
+</html>
