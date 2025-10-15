@@ -1,7 +1,71 @@
 const out = document.getElementById('output');
 const rootEl = document.getElementById('rootPath');
 const jobEl = document.getElementById('jobId');
+const settingsBtn = document.getElementById('openSettings');
+const settingsModal = document.getElementById('settingsModal');
+const settingsForm = document.getElementById('settingsForm');
+const settingsClose = document.getElementById('settingsClose');
+const settingsCancel = document.getElementById('settingsCancel');
+const apiKeyInput = document.getElementById('settingApiKey');
+const providerSelect = document.getElementById('settingProvider');
+const modelNameInput = document.getElementById('settingModelName');
+const maxTokensInput = document.getElementById('settingMaxTokens');
+const imageEdgeInput = document.getElementById('settingImageEdge');
+const compressCheckbox = document.getElementById('settingCompress');
+
 function log(s){ out.value += s; out.scrollTop = out.scrollHeight; }
+
+function toggleModelFields() {
+  const isGPT = providerSelect.value === 'GPT-5 Vision';
+  apiKeyInput.disabled = !isGPT;
+  modelNameInput.disabled = !isGPT;
+}
+
+async function openSettingsModal() {
+  const root = rootEl.value.trim();
+  if (!root) {
+    alert('Choose project root first.');
+    return;
+  }
+  const { config, env } = await window.pipeline.loadSettings(root);
+  providerSelect.value = config.provider || 'Mock';
+  modelNameInput.value = config.model_name || env.MODEL_NAME || 'gpt-5.1-vision';
+  maxTokensInput.value = config.max_tokens || 900;
+  imageEdgeInput.value = config.image_max_edge || 1024;
+  compressCheckbox.checked = !!config.compress_images;
+  apiKeyInput.value = env.AG5_API_KEY || '';
+  toggleModelFields();
+  settingsModal.classList.add('visible');
+}
+
+function closeSettingsModal() {
+  settingsModal.classList.remove('visible');
+}
+
+settingsBtn.addEventListener('click', openSettingsModal);
+settingsClose.addEventListener('click', closeSettingsModal);
+settingsCancel.addEventListener('click', closeSettingsModal);
+providerSelect.addEventListener('change', toggleModelFields);
+
+settingsForm.addEventListener('submit', async (evt) => {
+  evt.preventDefault();
+  const root = rootEl.value.trim();
+  if (!root) {
+    alert('Choose project root first.');
+    return;
+  }
+  const payload = {
+    provider: providerSelect.value,
+    modelName: modelNameInput.value.trim(),
+    maxTokens: maxTokensInput.value,
+    imageMaxEdge: imageEdgeInput.value,
+    compressImages: compressCheckbox.checked,
+    apiKey: apiKeyInput.value.trim()
+  };
+  await window.pipeline.saveSettings(root, payload);
+  log(`\n[Settings] Saved (${payload.provider}).\n`);
+  closeSettingsModal();
+});
 
 document.getElementById('chooseRoot').addEventListener('click', async () => {
   const root = await window.pipeline.chooseRoot();

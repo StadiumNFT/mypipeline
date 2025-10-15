@@ -1,0 +1,64 @@
+[
+  {
+    "tags": ["marvel", "general"],
+    "input": "front/back shows 'Green PMG', #37, 2017 Fleer Ultra Spider-Man",
+    "output": {
+      "sku": "demo_marvel_0001",
+      "cat": "marvel",
+      "brand": "Upper Deck",
+      "set": "2017 Fleer Ultra Spider-Man",
+      "year": 2017,
+      "character": "Spider-Man",
+      "num": "37",
+      "subset": "PMG",
+      "variant": "Green",
+      "serial": "/10",
+      "auto": false,
+      "mem": false,
+      "grade": "raw",
+      "cond": "NM",
+      "notes": "Green PMG parallel",
+      "conf": 0.92
+    }
+  },
+  {
+    "tags": ["sports", "general"],
+    "input": "front/back shows 'Topps Chrome Refractor', #150, 2019 Topps Chrome",
+    "output": {
+      "sku": "demo_sports_0001",
+      "cat": "sports",
+      "brand": "Topps",
+      "set": "2019 Topps Chrome",
+      "year": 2019,
+      "player": "Mike Trout",
+      "num": "150",
+      "variant": "Refractor",
+      "auto": false,
+      "mem": false,
+      "grade": "raw",
+      "cond": "NM",
+      "notes": "Refractor finish",
+      "conf": 0.9
+    }
+  },
+  {
+    "tags": ["pokemon", "general"],
+    "input": "front/back shows 'Holo Rare', #12, 2020 Pokemon",
+    "output": {
+      "sku": "demo_pokemon_0001",
+      "cat": "pokemon",
+      "brand": "Pokemon",
+      "set": "2020 Pokemon",
+      "year": 2020,
+      "character": "Charizard",
+      "num": "12",
+      "subset": "Holo",
+      "auto": false,
+      "mem": false,
+      "grade": "raw",
+      "cond": "NM",
+      "notes": "Holo foil",
+      "conf": 0.88
+    }
+  }
+]

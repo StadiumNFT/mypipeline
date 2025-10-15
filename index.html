@@ -10,6 +10,7 @@
     <h1>Ageless Pipeline Control</h1>
     <button id="chooseRoot">Choose Project Root</button>
     <input id="rootPath" placeholder="Select the repo folder (contains pipeline/, Scans_Inbox/, etc.)"/>
+    <button id="openSettings">Settings</button>
   </header>
   <main>
     <section class="card">
@@ -33,6 +34,44 @@
     <h3>Live Output</h3>
     <textarea id="output" spellcheck="false"></textarea>
   </section>
+
+  <div id="settingsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <button id="settingsClose" class="icon">×</button>
+      </div>
+      <form id="settingsForm">
+        <label>Model Provider
+          <select id="settingProvider">
+            <option value="Mock">Mock</option>
+            <option value="GPT-5 Vision">GPT-5 Vision</option>
+          </select>
+        </label>
+        <label>Vision model name
+          <input id="settingModelName" placeholder="gpt-5.1-vision"/>
+        </label>
+        <label>API Key
+          <input id="settingApiKey" type="password" placeholder="AG5_API_KEY" autocomplete="off"/>
+        </label>
+        <label>Max tokens per item
+          <input id="settingMaxTokens" type="number" min="100" max="4000" step="50"/>
+        </label>
+        <label>Max image edge (px)
+          <input id="settingImageEdge" type="number" min="512" max="2048" step="32"/>
+        </label>
+        <label class="checkbox">
+          <input id="settingCompress" type="checkbox" checked/>
+          <span>Compress images before send</span>
+        </label>
+        <div class="modal-actions">
+          <button type="button" id="settingsCancel">Cancel</button>
+          <button type="submit" class="primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="renderer.js"></script>
 </body>
 </html>
