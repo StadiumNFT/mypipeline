@@ -63,7 +63,8 @@ settingsForm.addEventListener('submit', async (evt) => {
     apiKey: apiKeyInput.value.trim()
   };
   await window.pipeline.saveSettings(root, payload);
-  log(`\n[Settings] Saved (${payload.provider}).\n`);
+  const masked = payload.apiKey ? payload.apiKey.replace(/.(?=.{4})/g, '•') : '(none)';
+  log(`\n[Settings] Saved (${payload.provider}) apiKey=${masked}.\n`);
   closeSettingsModal();
 });
 

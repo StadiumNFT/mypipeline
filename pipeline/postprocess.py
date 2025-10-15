@@ -1,3 +1,4 @@
+import concurrent.futures
 import csv
 import json
 import os
@@ -21,6 +22,8 @@ DEFAULT_CONFIG = {
     "max_tokens": 900,
     "compress_images": True,
     "image_max_edge": 1024,
+    "per_item_timeout": 45,
+    "max_failures": 5,
 }
 CONFIG_PATH = Path("pipeline/config/model.json")
 RULES_PATH = Path("pipeline/prompts/rules_minimal.txt")
@@ -140,13 +143,26 @@ def _build_nudge(record: Dict[str, Any], capsule: Dict[str, Any]) -> str:
 
 def _normalise(raw: Dict[str, Any]) -> Dict[str, Any]:
     card = CardRecord(**raw)
-    data = card.model_dump(exclude_none=True)
-    # Enforce single identity field
-    if data.get("player") and data.get("character"):
-        data.pop("character")
+    data = card.model_dump(mode="json", exclude_none=True)
     if "price_est" in data and data["price_est"] == 0:
         data.pop("price_est")
     return data
+
+
+def _run_with_timeout(func, timeout: int, *args, **kwargs):
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(func, *args, **kwargs)
+    shutdown_early = False
+    try:
+        return future.result(timeout=timeout)
+    except concurrent.futures.TimeoutError:
+        future.cancel()
+        executor.shutdown(wait=False, cancel_futures=True)
+        shutdown_early = True
+        raise
+    finally:
+        if not shutdown_early:
+            executor.shutdown(wait=True, cancel_futures=True)
 
 
 def _write_outputs(out_root: Path, sku: str, record: Dict[str, Any], needs_review: bool) -> None:
@@ -197,13 +213,20 @@ def _write_outputs(out_root: Path, sku: str, record: Dict[str, Any], needs_revie
         writer.writerow(row)
 
 
-def _summarise(record: Dict[str, Any], needs_review: bool) -> str:
+def _call_provider(front: Path, back: Path, payload: Dict[str, Any], timeout: int) -> Dict[str, Any]:
+    return _run_with_timeout(run_gpt5, timeout, str(front), str(back), payload)
+
+
+def _summarise(record: Dict[str, Any], needs_review: bool, token_estimate: int) -> str:
     name = record.get("player") or record.get("character") or ""
     set_name = record.get("set", "?")
     year = record.get("year", "?")
     conf = record.get("conf", 0.0)
     flag = " ⚠️" if needs_review else ""
-    return f"{year} {set_name} {record.get('num', '?')} {name} :: conf={conf:.2f}{flag}"
+    return (
+        f"{year} {set_name} {record.get('num', '?')} {name} :: "
+        f"conf={conf:.2f}{flag} tok~{token_estimate}"
+    )
 
 
 def process_batch(job_id: str, ready: str = "Scans_Ready", batches: str = "pipeline/output/batches", outroot: str = "pipeline/output") -> str:
@@ -224,7 +247,15 @@ def process_batch(job_id: str, ready: str = "Scans_Ready", batches: str = "pipel
     with batch_file.open("r", encoding="utf-8") as handle:
         lines = [json.loads(line) for line in handle if line.strip()]
 
+    timeout = int(config.get("per_item_timeout", DEFAULT_CONFIG["per_item_timeout"]))
+    max_failures = int(config.get("max_failures", DEFAULT_CONFIG["max_failures"]))
+    failures = 0
+
+    abort_remaining = False
+
     for item in lines:
+        if abort_remaining:
+            break
         sku = item["sku"]
         folder = Path(ready) / sku
         images = item.get("images", [])
@@ -241,6 +272,7 @@ def process_batch(job_id: str, ready: str = "Scans_Ready", batches: str = "pipel
         hint_payload = build_hint_payload(sku, project_root=project_root)
         response_data: Dict[str, Any]
 
+        provider_failed = False
         if config.get("provider") == "GPT-5 Vision":
             hint_payload.update(
                 {
@@ -250,12 +282,30 @@ def process_batch(job_id: str, ready: str = "Scans_Ready", batches: str = "pipel
                 }
             )
             try:
-                response_data = run_gpt5(str(front_prepped), str(back_prepped), hint_payload)
+                response_data = _call_provider(front_prepped, back_prepped, hint_payload, timeout)
             except MissingAPIKey:
-                log.event("post", sku, job_id=job_id, status="error", message="Missing AG5_API_KEY")
+                log.event(
+                    "post",
+                    sku,
+                    job_id=job_id,
+                    status="error",
+                    message="Missing AG5_API_KEY",
+                )
+                provider_failed = True
+                response_data = _fake_model_response(sku, hint_payload.get("capsule", {}))
+            except concurrent.futures.TimeoutError:
+                log.event(
+                    "post",
+                    sku,
+                    job_id=job_id,
+                    status="timeout",
+                    message=f"Provider timed out after {timeout}s",
+                )
+                provider_failed = True
                 response_data = _fake_model_response(sku, hint_payload.get("capsule", {}))
             except Exception as exc:  # pragma: no cover - defensive
                 log.event("post", sku, job_id=job_id, status="error", message=str(exc))
+                provider_failed = True
                 response_data = _fake_model_response(sku, hint_payload.get("capsule", {}))
         else:
             response_data = _fake_model_response(sku, hint_payload.get("capsule", {}))
@@ -267,12 +317,17 @@ def process_batch(job_id: str, ready: str = "Scans_Ready", batches: str = "pipel
             record = _normalise(_fake_model_response(sku, hint_payload.get("capsule", {})))
         needs_review = _needs_retry(record)
 
+        if provider_failed:
+            failures += 1
+            if failures >= max_failures:
+                abort_remaining = True
+
         if needs_review and config.get("provider") == "GPT-5 Vision":
             nudge_payload = dict(hint_payload)
             nudge_payload["nudge"] = _build_nudge(record, hint_payload.get("capsule", {}))
             nudge_payload["exemplars"] = (hint_payload.get("exemplars") or [])[:1]
             try:
-                retry_raw = run_gpt5(str(front_prepped), str(back_prepped), nudge_payload)
+                retry_raw = _call_provider(front_prepped, back_prepped, nudge_payload, timeout)
                 retry_record = _normalise(retry_raw)
                 retry_review = _needs_retry(retry_record)
                 if not retry_review or retry_record.get("conf", 0) >= record.get("conf", 0):
@@ -281,9 +336,29 @@ def process_batch(job_id: str, ready: str = "Scans_Ready", batches: str = "pipel
             except Exception as exc:  # pragma: no cover - defensive
                 log.event("post", sku, job_id=job_id, status="retry_error", message=str(exc))
 
+        try:
+            token_estimate = max(
+                1,
+                len(json.dumps(response_data, ensure_ascii=False)) // 4,
+            )
+        except Exception:  # pragma: no cover - defensive
+            token_estimate = 1
+
         _write_outputs(result_root, sku, record, needs_review)
-        summary = _summarise(record, needs_review)
-        log.event("post", sku, job_id=job_id, status="needs_review" if needs_review else "ok", summary=summary)
+        summary = _summarise(record, needs_review, token_estimate)
+        log.event(
+            "post",
+            sku,
+            job_id=job_id,
+            status="needs_review" if needs_review else "ok",
+            summary=summary,
+            tokens=token_estimate,
+        )
         print(f"[POST] {sku}: {summary}")
+
+    if abort_remaining:
+        message = f"Aborted remaining SKUs after {failures} provider failure(s)."
+        log.event("post", None, job_id=job_id, status="aborted", message=message)
+        print(f"[POST] {message}")
 
     return str(result_root)
