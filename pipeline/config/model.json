@@ -1,0 +1,7 @@
+{
+  "provider": "Mock",
+  "model_name": "gpt-5.1-vision",
+  "max_tokens": 900,
+  "compress_images": true,
+  "image_max_edge": 1024
+}
